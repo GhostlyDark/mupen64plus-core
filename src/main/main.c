@@ -1074,14 +1074,8 @@ static void open_eep_file(struct file_storage* fstorage)
     }
 }
 
-static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
+static void load_dd_rom(uint8_t* rom, size_t* rom_size)
 {
-    /* set the DD rom region */
-    if (g_media_loader.set_dd_rom_region != NULL)
-    {
-        g_media_loader.set_dd_rom_region(g_media_loader.cb_data, *disk_region);
-    }
-
     /* ask the core loader for DD disk filename */
     char* dd_ipl_rom_filename = (g_media_loader.get_dd_rom == NULL)
         ? NULL
@@ -1141,7 +1135,7 @@ no_dd:
     *rom_size = 0;
 }
 
-static int load_dd_disk(struct dd_disk* dd_disk, const struct storage_backend_interface** dd_idisk)
+static void load_dd_disk(struct dd_disk* dd_disk, const struct storage_backend_interface** dd_idisk)
 {
     /* ask the core loader for DD disk filename */
     char* dd_disk_filename = (g_media_loader.get_dd_disk == NULL)
@@ -1267,7 +1261,6 @@ static int load_dd_disk(struct dd_disk* dd_disk, const struct storage_backend_in
     dd_disk->isave_storage = (save_format >= 0) ? &g_ifile_storage : NULL;
     dd_disk->format = format;
     dd_disk->development = development;
-    dd_disk->region = DDREGION_UNKNOWN;
     dd_disk->offset_sys = offset_sys;
     dd_disk->offset_id = offset_id;
     dd_disk->offset_ram = offset_ram;
@@ -1280,27 +1273,13 @@ static int load_dd_disk(struct dd_disk* dd_disk, const struct storage_backend_in
             (*dd_idisk)->size(dd_disk),
             get_disk_format_name(format));
 
-    /* Get region from disk and byteswap it as needed */
     uint32_t w = *(uint32_t*)(*dd_idisk)->data(dd_disk);
-    if (dd_disk->format == DISK_FORMAT_SDK) {
-        swap_buffer(&w, sizeof(w), 1);
-    }
-    
-    /* Set region in dd_disk */
-    if (w == DD_REGION_JP) {
-        dd_disk->region = DDREGION_JAPAN;
-    } else if (w == DD_REGION_US) {
-        dd_disk->region = DDREGION_US;
-    } else if (w == DD_REGION_DV) {
-        dd_disk->region = DDREGION_DEV;
-    }
-
     if (w == DD_REGION_JP || w == DD_REGION_US || w == DD_REGION_DV) {
         DebugMessage(M64MSG_WARNING, "Loading a saved disk");
     }
 
     free(dd_disk_filename);
-    return 1;
+    return;
 
 wrong_disk_format:
     /* no need to close save_storage as it is a child of disk->storage */
@@ -1311,8 +1290,6 @@ free_fstorage:
 no_disk:
     free(dd_disk_filename);
     *dd_idisk = NULL;
-
-    return 0;
 }
 
 static void close_dd_disk(struct dd_disk* disk)
@@ -1610,11 +1587,10 @@ m64p_error main_run(void)
     const struct storage_backend_interface* dd_idisk = NULL;
     memset(&dd_disk, 0, sizeof(dd_disk));
 
-    /* try to load DD disk first, if that succeeds, pass the region to load_dd_rom */
-    if (load_dd_disk(&dd_disk, &dd_idisk))
-    {
+    load_dd_rom((uint8_t*)mem_base_u32(g_mem_base, MM_DD_ROM), &dd_rom_size);
+    if (dd_rom_size > 0) {
         dd_rtc_iclock = &g_iclock_ctime_plus_delta;
-        load_dd_rom((uint8_t*)mem_base_u32(g_mem_base, MM_DD_ROM), &dd_rom_size, &dd_disk.region);
+        load_dd_disk(&dd_disk, &dd_idisk);
     }
     else
     {
