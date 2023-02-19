@@ -167,7 +167,13 @@ static char *get_save_filename(void)
     int format = ConfigGetParamInt(g_CoreConfig, "SaveFilenameFormat");
 
     if (format == 0) {
-        snprintf(filename, 256, "%s", ROM_PARAMS.headername);
+        if (ROM_HEADER.Name[0] != 0) {
+            snprintf(filename, 256, "%s", ROM_PARAMS.headername);
+        } else if (strstr(ROM_SETTINGS.goodname, "(unknown rom)") == NULL) {
+            snprintf(filename, 256, "%.32s", ROM_SETTINGS.goodname);
+        } else {
+            snprintf(filename, 256, "unknown-%.8s", ROM_SETTINGS.MD5);
+        }
     } else /* if (format == 1) */ {
         if (strstr(ROM_SETTINGS.goodname, "(unknown rom)") == NULL) {
             snprintf(filename, 256, "%.32s-%.8s", ROM_SETTINGS.goodname, ROM_SETTINGS.MD5);
@@ -358,8 +364,17 @@ const char *get_savesrampath(void)
 
 const char *get_savestatefilename(void)
 {
-    /* return same file name as save files */
-    return get_save_filename();
+    static char filename[256];
+
+    if (ROM_HEADER.Name[0] != 0) {
+        snprintf(filename, 256, "%s-%.8s", ROM_PARAMS.headername, ROM_SETTINGS.MD5);
+    } else if (strstr(ROM_SETTINGS.goodname, "(unknown rom)") == NULL) {
+        snprintf(filename, 256, "%.32s-%.8s", ROM_SETTINGS.goodname, ROM_SETTINGS.MD5);
+    } else {
+        snprintf(filename, 256, "unknown-%.8s", ROM_SETTINGS.MD5);
+    }
+
+    return filename;
 }
 
 void main_message(m64p_msg_level level, unsigned int corner, const char *format, ...)
