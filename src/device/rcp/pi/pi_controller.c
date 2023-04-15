@@ -53,8 +53,8 @@ static void dma_pi_read(struct pi_controller* pi)
     if (!validate_pi_request(pi))
         return;
 
-    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] & ~UINT32_C(1);
-    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG] & 0xfffffe;
+    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG];
+    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
     uint32_t length = (pi->regs[PI_RD_LEN_REG] & UINT32_C(0x00ffffff)) + 1;
     const uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
 
@@ -91,8 +91,8 @@ static void dma_pi_write(struct pi_controller* pi)
     if (!validate_pi_request(pi))
         return;
 
-    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] & ~UINT32_C(1);
-    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG] & 0xfffffe;
+    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG];
+    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
     uint32_t length = (pi->regs[PI_WR_LEN_REG] & UINT32_C(0x00ffffff)) + 1;
     uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
 
